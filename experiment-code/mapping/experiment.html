@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <script src="jspsych/dist/jspsych.js"></script>
+        <script src="jspsych/dist/plugin-html-keyboard-response.js"></script>
+        <script src="jspsych/dist/plugin-html-button-response.js"></script>
+        <script src="jspsych/dist/plugin-html-slider-response.js"></script>
+        <script src="jspsych/dist/plugin-survey-html-form.js"></script>
+        <script src="jspsych/dist/plugin-survey-text.js"></script>
+        <script src="jspsych/dist/plugin-animation.js"></script>
+        <script src="jspsych/dist/plugin-survey-multi-choice.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <link href="jspsych/dist/jspsych.css" rel="stylesheet" type="text/css">
+
+        <script src="experiment_design_texts.js"></script>
+        <style>
+            .jspsych-content {
+                max-width: 61.8%;
+            }
+            .jspsych-survey-text-question {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 10px;
+            }
+
+            table#grid {
+        /*      margin-top: 10px;*/
+              padding-left: auto; 
+              padding-right: auto;
+              table-layout: fixed;  /* Lock the size of the cells */
+        /*      text-align: center;
+              vertical-align: middle;*/
+            }
+            td {
+              width: 25px;
+              height: 25px;
+              border: 2px solid #000;
+              cursor: pointer;
+              overflow: hidden;
+            }
+            
+        </style>
+    </head>
+
+    <body>
+
+        
+    </body>
+
+    <script>
+        // init jsPsych
+        const jsPsych = initJsPsych({
+            default_iti: 0
+        });
+
+        var debug = false;
+        var reward = [];
+        // var bonus_pay = 0;
+
+        var test_stimuli = []; // test stimuli (later will be imported from server-side)
+        var test_trial_idx = []; // trial_idx presented to participants
+        var len_test_stimuli = 0; // test stimuli's length (used to provide trial progression info to participants)
+
+        var test_done = false;
+        
+        var tot_num_trials = 220; // total number of trials for the experiment 
+        var trial_order = 1;
+        var timeline = []; // experiment timeline
+
+        var exp_arousal = 0;
+        var exp_valence = 0;
+        
+        var PART_ID = [];
+        var TODAY = new Date();
+        var DD = String(TODAY.getDate()).padStart(2, '0');
+        var MM = String(TODAY.getMonth()+1).padStart(2, '0');
+        var YYYY = TODAY.getFullYear();
+        const DATE = YYYY+MM+DD; // today's date
+
+        const average = array => array.reduce((a, b) => a + b) / array.length;
+
+        // consent page
+        var consent_page = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: consent_text,
+            choices: ['I consent'],
+            post_trial_gap: 500,
+            on_finish: function(data){
+                fetch('/getTrials') // get data from server
+                .then(response => response.json())
+                .then(trials_from_server => {
+                    test_stimuli = trials_from_server;
+                    len_test_stimuli = test_stimuli.length;
+                    if (debug){
+                        console.log('data obtained from the server side:', trials_from_server);
+                        console.log(test_stimuli);
+                        console.log(len_test_stimuli);
+                    }
+                });
+                delete data.stimulus;
+            }
+        };
+        timeline.push(consent_page);
+
+
+        // page to get participant's Prolific ID
+        var prolific_id_page = {
+            data: {screen_id: "prolific_id_page"},
+            type: jsPsychSurveyHtmlForm,
+            preamble: prolific_id_page_text,
+            html: `<p><input name="Part_ID" type="text" /></p>`,
+            on_finish: function(data){
+                PART_ID = data.response.Part_ID;
+                jsPsych.data.addProperties({
+                    part_ID: data.response.Part_ID, // record participant's self reported ID
+                    ID_DATE: data.response.Part_ID + '_' + DATE // record its ID + today's Date
+                })
+            }
+        }
+        timeline.push(prolific_id_page);
+        
+
+        var instruction = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: instruction_text,
+            choices: ['Continue'],
+            post_trial_gap: 500,
+            on_finish: function(data){
+                delete data.stimulus;
+            }
+        }
+        timeline.push(instruction);
+
+
+        // comprehension or understanding check
+        var understand_check_content = {
+            type: jsPsychHtmlButtonResponse,
+            on_load: function(){
+                var table = document.getElementById('grid');
+                var lastClickedCell = null;
+                var arousal;
+                var valence;
+
+                for (var i = 0; i < 9; i++) {
+                  var row = document.createElement('tr');
+                  for (var j = 0; j < 9; j++) {
+                    var cell = document.createElement('td');
+                    if (i == 4 && j == 4) {
+                        cell.style.borderWidth = '4px';
+                        // cell.innerText = '+';
+                    }
+
+                    cell.onclick = function() { cellClicked(this); };
+                    cell.onmouseover = function() { cellHovered(this); };
+                    cell.onmouseout = function() { cellHoverOut(this); };
+                    row.appendChild(cell);
+                  }
+                  table.appendChild(row);
+                }
+
+                function cellClicked(cell) {
+                    if (lastClickedCell) {
+                      lastClickedCell.style.backgroundColor = '';  // Reset the color of the last clicked cell
+                    }
+                    cell.style.backgroundColor = 'red';  // Change the background color on click
+                    lastClickedCell = cell;  // Store the clicked cell
+
+                    valence = cell.cellIndex + 1;
+                    arousal = 9 - cell.parentNode.rowIndex;
+
+                    // console.log(arousal, valence)
+                    // $("button").attr('disabled', false);
+                }
+
+                function cellHovered(cell) {
+                  if (cell !== lastClickedCell) {
+                        cell.style.backgroundColor = 'grey';
+                    }  // Change the background color on hover
+                }
+
+                function cellHoverOut(cell) {
+                    if (cell !== lastClickedCell) {
+                        cell.style.backgroundColor = '';
+                    } // Reset the background color when mouse is out
+                }
+
+                $('h4').text('Please click on the square that best represents a neutral, average and everyday feeling.');
+                $('table').click(function() {
+                    if (arousal === 5 && valence === 5) {
+                        alert('Correct!');
+                        $('table').off('click');
+                        // lastClickedCell.style.backgroundColor = '';
+                        question2();
+                    } else {alert('Sorry, your answer is wrong, please do it again.')};
+
+                function question2() {
+                    $('h4').text('Please click on a square that best describes an face with extremely unpleasant and sleepy feeling (such as feelings of depression).')
+                    $('table').click(function() {
+                        // console.log(arousal, valence);
+                        if (arousal === 1 && valence === 1) {
+                            alert('Correct!');
+                            $('table').off('click');
+                            // lastClickedCell.style.backgroundColor = '';
+                            question3();
+                        } else {alert('Sorry, your answer is wrong, please do it again.')}
+                    });
+                };
+
+                function question3() {
+                    $('h4').text('Please click on a square that best describes an face with extremely arousal/activated but average pleasant feeling.')
+                    $('table').click(function() {
+                        if (arousal === 9 && valence === 5) {
+                            alert('Correct!');
+                            $('table').off('click');
+                            // lastClickedCell.style.backgroundColor = '';
+                            question4();
+                        } else {alert('Sorry, your answer is wrong, please do it again.')}
+                    });
+                };
+
+                function question4() {
+                    $('h4').text('Please click on a square that best describes an face with extremely pleasant but average awake feeling.')
+                    $('table').click(function() {
+                        if (arousal === 5 && valence === 9) {
+                            // alert('Correct! You can begin the experiment now!');
+                            $('h4').html('Congrats! Please continue.')
+                            $('table').off('click');
+                            test_done = true;
+                            // $("button").attr('disabled', false);
+                            // dallinger.createParticipant();
+                        } else {alert('Sorry, your answer is wrong, please do it again.')}
+                    });
+                };
+
+
+        });
+
+            },
+            stimulus: understand_check_text,
+            choices: ['Continue'],
+            post_trial_gap: 500,
+            on_finish: function(data){
+                // var responses = data.response;
+                if (test_done){
+                        data.understand_correct = true;
+                    } else {
+                        data.understand_correct = false;
+                    }
+                delete data.stimulus;
+            }
+        }
+
+        var understand_check = {
+            timeline: [understand_check_content],
+            loop_function: function(data){
+                if (data.values()[0].understand_correct) {
+                    return false;
+                } else {
+                    alert('Please finish the test.')
+                    return true;
+                }
+            }
+        }
+        timeline.push(understand_check);
+
+
+
+        var instruction2 = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: instruction2_text,
+            choices: ['Continue'],
+            post_trial_gap: 500,
+            on_finish: function(){
+                test_stimuli = jsPsych.randomization.shuffle(test_stimuli); // shuffle the test_stimuli to present trials in the shuffled order
+                if (debug) {
+                    console.log(test_stimuli)
+                }
+            }
+        }
+        timeline.push(instruction2);
+
+
+        var one_trial = {
+            type: jsPsychHtmlButtonResponse,
+            on_load: function(){
+                var table = document.getElementById('grid');
+                var lastClickedCell = null;
+
+                for (var i = 0; i < 9; i++) {
+                  var row = document.createElement('tr');
+                  for (var j = 0; j < 9; j++) {
+                    var cell = document.createElement('td');
+                    if (i == 4 && j == 4) {
+                        cell.style.borderWidth = '4px';
+                        // cell.innerText = '+';
+                    }
+
+                    cell.onclick = function() { cellClicked(this); };
+                    cell.onmouseover = function() { cellHovered(this); };
+                    cell.onmouseout = function() { cellHoverOut(this); };
+                    row.appendChild(cell);
+                  }
+                  table.appendChild(row);
+                }
+
+                $('#face_mapping').attr('src', 'images/gridsamples/' + test_stimuli[0]["img"])
+                $('#order').html(trial_order + '/' + tot_num_trials)
+
+                function cellClicked(cell) {
+                    if (lastClickedCell) {
+                      lastClickedCell.style.backgroundColor = '';  // Reset the color of the last clicked cell
+                    }
+                    cell.style.backgroundColor = 'red';  // Change the background color on click
+                    lastClickedCell = cell;  // Store the clicked cell
+
+                    exp_valence = cell.cellIndex + 1;
+                    exp_arousal = 9 - cell.parentNode.rowIndex;
+                    $('.jspsych-btn').attr('disabled', false);
+                }
+
+                function cellHovered(cell) {
+                  if (cell !== lastClickedCell) {
+                        cell.style.backgroundColor = 'grey';
+                    }  // Change the background color on hover
+                }
+
+                function cellHoverOut(cell) {
+                    if (cell !== lastClickedCell) {
+                        cell.style.backgroundColor = '';
+                    } // Reset the background color when mouse is out
+                }  
+            },
+            stimulus: experiment,
+            choices: ['Submit'],
+            button_html: `<button class="jspsych-btn" disabled>%choice%</button>`,
+            on_finish: function(data){
+                data.arousal = exp_arousal;
+                data.valence = exp_valence;
+                data.img_id = test_stimuli[0]["img_id"];
+
+                if (debug) {
+                    console.log(data);
+                }
+                delete data.stimulus;
+                test_trial_idx.push(test_stimuli[0]["img_id"]); // record tested trials
+                test_stimuli.shift(); // remove the first row of the test stimuli 
+                trial_order += 1; // trial count + 1
+            },
+            post_trial_gap: 500,
+        };
+
+
+        // var iti = {
+        //     type: jsPsychHtmlButtonResponse,
+        //     stimulus: `Click the button below to proceed to the next trial...
+        //                <br><br>`,
+        //     choices: ['Continue'],
+        //     on_finish: function(){
+        //         test_trial_idx.push(test_stimuli[0]["img_id"]); // record tested trials
+        //         test_stimuli.shift(); // remove the first row of the test stimuli 
+        //         trial_order += 1; // trial count + 1
+        //     },
+        //     post_trial_gap: 500
+        // };
+
+
+        
+        for (let i=0; i<tot_num_trials; i++) {
+            timeline.push(one_trial)
+            // timeline.push(iti)
+        };
+
+        var submit_data = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `Thank you. You have reached the end. 
+                       <br>Click the button below to reveal your compensation.
+                        <br><br>`,
+            choices: ['Continue'],
+            on_finish: function(data){
+                // bonus_pay = jsPsych.randomization.sampleWithReplacement(reward,1)/exchange_rate;
+                // if (debug) {
+                //     console.log(reward);
+                //     console.log(bonus_pay);
+                // }
+                // bonus_pay = Math.max(bonus_pay,0); // remove negative bonus
+                // bonus_pay = Math.min(bonus_pay,0.5); // remove too big of a bonus
+                // jsPsych.data.addProperties({
+                //     bonus: bonus_pay // attention check results
+                // });
+                data.tested_trial_idx = test_trial_idx;
+                var Post_Data = {
+                    experiment_data: jsPsych.data.get().values(),
+                    participant_id: PART_ID,
+                    // bonus: bonus_pay,
+                    trial_idx: test_trial_idx
+                };
+                fetch('/experiment-data', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(Post_Data)
+                });
+                if (debug){
+                    console.log('=====Send data back to server=====');
+                }
+            }
+        }
+        timeline.push(submit_data);
+        
+
+        // Make 2 decimal text xx.xx
+        function readableText(input){
+            let output = Math.round(input*100)/100;
+            output = output.toString();
+            try {
+                if (output.includes('.')){
+                    let decimal_len = output.split('.')[1].length // how many decimal points
+                    if (decimal_len<2) {
+                        output = output + '0'.repeat(2-decimal_len);
+                    }
+                } 
+                // else {
+                //     output = output + '.00';
+                // }
+            }
+            catch (error) {
+                console.error(error);
+            } 
+            return output
+        };
+
+        var debrief = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: function() {
+                return "<p>Your payment is 3.00 GBP.</p>"
+                        +"<p>You Prolific completion code is: C1JGFO7F</p>"
+                        +"<p><a href='https://app.prolific.com/submissions/complete?cc=C1JGFO7F'>Click here to return to Prolific</a></p>"
+            },
+            choices: ''
+        }
+        timeline.push(debrief);
+
+        // start the experiment, rollout the timeline
+        jsPsych.run(timeline);
+
+
+        
+
+    </script>
+</html>

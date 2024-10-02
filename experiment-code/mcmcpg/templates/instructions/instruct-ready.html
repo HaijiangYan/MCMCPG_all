@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    <div class="main_div">
+        <h1>Instructions</h1>
+
+        <hr>
+
+        <p>In this experiment, you will be presented with pairs of face images with specific emotion at the centre of task window. You need to pick one of them ("left" or "right"), according to your response to the question asked above the images ("Who looks happier?" or "Who looks sadder?" or "Who looks more neutral?"). Different from the other two questions, "who looks more neutral?" here means you are supposed to choose the face that is less emotional. <br><br>You will work through all 3 questions, each with 400 trials. You will be prompted to have a short break every 200 trials. The averaged completeion time of this part is 50-60 minutes. <br><br>Note: images' display relies on Internet connection, please assure the connection quality before you start.</p>
+
+        <hr>
+
+        <div>
+            <div class="row">
+                <div class="col-xs-10"></div>
+                <div class="col-xs-2">
+                    <button type="button" id="begin" class="btn btn-success btn-lg" onClick="dallinger.goToPage('experiment');">
+                    Begin</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        dallinger.createParticipant();
+    </script>
+{% endblock %}

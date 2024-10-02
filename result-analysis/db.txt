@@ -1,0 +1,4 @@
+heroku pg:backups:capture --app dlgr-vae-no-g 
+heroku pg:backups:download --app dlgr-vae-no-g
+createdb -O dallinger vae-noguide-rd1
+pg_restore --verbose --clean --no-acl --no-owner -h localhost -U dallinger -d vae-noguide-r1 latest.dump

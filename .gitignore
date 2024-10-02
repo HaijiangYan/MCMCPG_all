@@ -1,0 +1,9 @@
+main.ipynb
+.idea/
+.ipynb_checkpoints/
+**/images/
+*.pptx
+**/*.Identifier
+**/*.npy
+**/*.pkl
+**/*.pt

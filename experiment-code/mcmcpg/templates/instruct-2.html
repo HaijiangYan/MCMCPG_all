@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    <div class="main_div">
+        <h1>Instructions</h1>
+
+        <hr>
+
+        <p>In the next section, you will see a face at the centre of task window each time. Below the image, you need to pick one of three options (“Happy”, “Sad” and “Neutral”) to describe the face correctly. After you make your choice, a rating slider (0-100) will pop up. You need to rate your confidence in your choice through adjusting it before submitting. <br><br>A score of 100 refers to that you are completely confident in that you have made a right choice, while a lower score means you are not so sure whether you are right. If you have absolutely no idea how to describe the face and just select a random option, then you should rate your confidence near 0. <br><br>150 trials in total, estimated compeletion time is 12 minutes. </p>
+
+        <hr>
+
+        <div>
+            <div class="row">
+                <div class="col-xs-10"></div>
+                <div class="col-xs-2">
+                    <button type="button" id="begin" class="btn btn-success btn-lg" onClick="dallinger.goToPage('experiment2');">
+                    Begin</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

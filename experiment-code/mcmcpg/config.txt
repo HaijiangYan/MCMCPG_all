@@ -1,0 +1,31 @@
+[Experiment]
+mode = live
+auto_recruit = true
+recruiter = prolific
+
+[Prolific]
+title = Select the facial expression
+description = Decide which image is a better match to a given facial expression.
+prolific_estimated_completion_minutes = 70
+prolific_maximum_allowed_minutes = 90
+prolific_reward_cents = 900
+browser_exclude_rule = MSIE, mobile, tablet
+prolific_recruitment_config = file:prolific_config.json
+
+[MTurk]
+base_payment = 1.00
+duration = 1.4
+
+[Database]
+database_url = postgresql://postgres@localhost/dallinger
+database_size = standard-0
+
+[Server]
+dyno_type = performance-m
+num_dynos_web = 1
+num_dynos_worker = 1
+redis_size = premium-1
+host = 0.0.0.0
+clock_on = true
+
+

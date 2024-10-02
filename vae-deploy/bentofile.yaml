@@ -1,0 +1,16 @@
+service: "service:svc"  # Same as the argument passed to `bentoml serve`
+labels:
+   owner: Haijiang-Warwick
+   stage: dev
+include:
+- "resVAE.py"  
+- "service.py"
+- "models"
+python:
+   packages:  # Additional pip packages required by the Service
+   - torch
+   - numpy
+   - matplotlib
+   - pybase64
+models: # The model to be used for building the Bento.
+- vae_decoder:yqylcduxx2oeuaav

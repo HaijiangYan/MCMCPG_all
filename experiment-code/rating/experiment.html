@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <script src="jspsych/dist/jspsych.js"></script>
+        <script src="jspsych/dist/plugin-html-keyboard-response.js"></script>
+        <script src="jspsych/dist/plugin-html-button-response.js"></script>
+        <script src="jspsych/dist/plugin-html-slider-response.js"></script>
+        <script src="jspsych/dist/plugin-survey-html-form.js"></script>
+        <script src="jspsych/dist/plugin-survey-text.js"></script>
+        <script src="jspsych/dist/plugin-animation.js"></script>
+        <script src="jspsych/dist/plugin-survey-multi-choice.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <link href="jspsych/dist/jspsych.css" rel="stylesheet" type="text/css">
+
+        <script src="experiment_design_texts.js"></script>
+        <style>
+            .jspsych-content {
+                max-width: 61.8%;
+            }
+            .jspsych-survey-text-question {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 10px;
+            }
+
+            .likert {
+                display: flex;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+
+            .likert label {
+                display: inline-block;
+                text-align: center;
+                flex: 1;
+            }
+
+            
+        </style>
+    </head>
+
+    <body>
+
+    </body>
+
+    <script>
+        // init jsPsych
+        const jsPsych = initJsPsych({
+            default_iti: 0
+        });
+
+        var debug = false;
+        var reward = [];
+        // var bonus_pay = 0;
+
+        var test_stimuli = []; // test stimuli (later will be imported from server-side)
+        var test_trial_idx = []; // trial_idx presented to participants
+        var len_test_stimuli = 1; // test stimuli's length (used to provide trial progression info to participants)
+        
+        var tot_num_trials = 183; // total number of trials for the experiment 
+        var trial_order = 1;
+        var timeline = []; // experiment timeline
+
+        var exp_rating = 0;
+        
+        var PART_ID = [];
+        var TODAY = new Date();
+        var DD = String(TODAY.getDate()).padStart(2, '0');
+        var MM = String(TODAY.getMonth()+1).padStart(2, '0');
+        var YYYY = TODAY.getFullYear();
+        const DATE = YYYY+MM+DD; // today's date
+
+        const average = array => array.reduce((a, b) => a + b) / array.length;
+
+        function shuffle(array) {
+            let currentIndex = array.length,  randomIndex;
+            while (currentIndex > 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [
+                array[randomIndex], array[currentIndex]];
+            }
+            return array;
+            };
+
+        const block_order = shuffle(['happy', 'sad', 'neutral']);
+        const block_length = {'happy': 62, 'sad': 62, 'neutral': 59};
+        var current_emo;
+
+        // consent page
+        var consent_page = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: consent_text,
+            choices: ['I consent'],
+            post_trial_gap: 500,
+            on_finish: function(data){
+                current_emo = block_order[0]
+                fetch('/' + current_emo) // get data from server
+                .then(response => response.json())
+                .then(trials_from_server => {
+                    test_stimuli = trials_from_server;
+                    test_stimuli = jsPsych.randomization.shuffle(test_stimuli);
+                    len_test_stimuli = test_stimuli.length;
+                    if (debug){
+                        console.log('data obtained from the server side:', trials_from_server);
+                        console.log(test_stimuli);
+                        console.log(len_test_stimuli);
+                    }
+                });
+                delete data.stimulus;
+            }
+        };
+        timeline.push(consent_page);
+
+
+        // page to get participant's Prolific ID
+        var prolific_id_page = {
+            data: {screen_id: "prolific_id_page"},
+            type: jsPsychSurveyHtmlForm,
+            preamble: prolific_id_page_text,
+            html: `<p><input name="Part_ID" type="text" /></p>`,
+            on_finish: function(data){
+                PART_ID = data.response.Part_ID;
+                jsPsych.data.addProperties({
+                    part_ID: data.response.Part_ID, // record participant's self reported ID
+                    ID_DATE: data.response.Part_ID + '_' + DATE // record its ID + today's Date
+                })
+            }
+        }
+        timeline.push(prolific_id_page);
+        
+
+        var instruction = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: instruction_text,
+            choices: ['Continue'],
+            post_trial_gap: 500,
+            on_finish: function(data){
+                delete data.stimulus;
+            }
+        }
+        timeline.push(instruction);
+
+
+        var instruction2 = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: instruction2_text,
+            choices: ['Continue'],
+            post_trial_gap: 500,
+            on_finish: function(){
+                if (debug) {
+                    console.log(test_stimuli)
+                }
+            }
+        }
+        timeline.push(instruction2);
+
+
+        var one_trial = {
+            type: jsPsychHtmlButtonResponse,
+            on_load: function(){
+                $('#order').html(trial_order + '/' + tot_num_trials)
+                $('#face_mapping').attr('src', 'images/' + test_stimuli[0]["img"])
+                $('.target').html(current_emo)
+
+                $('input[name="rating"]').change(function() {
+                    exp_rating = $('input[name="rating"]:checked')[0].value;
+                    $('.jspsych-btn').attr('disabled', false);
+                });
+            },
+            stimulus: experiment,
+            choices: ['Submit'],
+            button_html: `<button class="jspsych-btn" disabled>%choice%</button>`,
+            on_finish: function(data){
+                data.rating = exp_rating;
+                data.img_id = test_stimuli[0]["img_id"];
+
+                if (debug) {
+                    console.log(data);
+                }
+                delete data.stimulus;
+                test_stimuli.shift(); // remove the first row of the test stimuli 
+                trial_order += 1; // trial count + 1
+            },
+            post_trial_gap: 500,
+        };
+
+
+        var iti = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `Click the button below to proceed to the next block...
+                       <br><br>`,
+            choices: ['Continue'],
+            on_finish: function(data){
+                current_emo = block_order[1]
+                fetch('/' + current_emo) // get data from server
+                .then(response => response.json())
+                .then(trials_from_server => {
+                    test_stimuli = trials_from_server;
+                    test_stimuli = jsPsych.randomization.shuffle(test_stimuli);
+                    len_test_stimuli = test_stimuli.length;
+                    if (debug){
+                        console.log('data obtained from the server side:', trials_from_server);
+                        console.log(test_stimuli);
+                        console.log(len_test_stimuli);
+                    }
+                });
+                delete data.stimulus;
+            }, 
+            post_trial_gap: 500
+        };
+
+        var iti2 = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `Click the button below to proceed to the next block...
+                       <br><br>`,
+            choices: ['Continue'],
+            on_finish: function(data){
+                current_emo = block_order[2]
+                fetch('/' + current_emo) // get data from server
+                .then(response => response.json())
+                .then(trials_from_server => {
+                    test_stimuli = trials_from_server;
+                    test_stimuli = jsPsych.randomization.shuffle(test_stimuli);
+                    len_test_stimuli = test_stimuli.length;
+                    if (debug){
+                        console.log('data obtained from the server side:', trials_from_server);
+                        console.log(test_stimuli);
+                        console.log(len_test_stimuli);
+                    }
+                });
+                delete data.stimulus;
+            }, 
+            post_trial_gap: 500
+        };
+
+
+        for (let i=0; i<tot_num_trials; i++) {
+            // console.log(block_length[block_order[0]])
+            if (i === block_length[block_order[0]]) {
+                timeline.push(iti);
+            } else if (i === block_length[block_order[0]] + block_length[block_order[1]]) {
+                timeline.push(iti2);
+            }
+            timeline.push(one_trial)
+        };
+
+        var submit_data = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `Thank you. You have reached the end. 
+                       <br>Click the button below to reveal your compensation.
+                        <br><br>`,
+            choices: ['Continue'],
+            on_finish: function(data){
+                // bonus_pay = jsPsych.randomization.sampleWithReplacement(reward,1)/exchange_rate;
+                // if (debug) {
+                //     console.log(reward);
+                //     console.log(bonus_pay);
+                // }
+                // bonus_pay = Math.max(bonus_pay,0); // remove negative bonus
+                // bonus_pay = Math.min(bonus_pay,0.5); // remove too big of a bonus
+                // jsPsych.data.addProperties({
+                //     bonus: bonus_pay // attention check results
+                // });
+                var Post_Data = {
+                    experiment_data: jsPsych.data.get().values(),
+                    participant_id: PART_ID
+                };
+                fetch('/experiment-data', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(Post_Data)
+                });
+                if (debug){
+                    console.log('=====Send data back to server=====');
+                }
+            }
+        }
+        timeline.push(submit_data);
+        
+
+        // Make 2 decimal text xx.xx
+        function readableText(input){
+            let output = Math.round(input*100)/100;
+            output = output.toString();
+            try {
+                if (output.includes('.')){
+                    let decimal_len = output.split('.')[1].length // how many decimal points
+                    if (decimal_len<2) {
+                        output = output + '0'.repeat(2-decimal_len);
+                    }
+                } 
+                // else {
+                //     output = output + '.00';
+                // }
+            }
+            catch (error) {
+                console.error(error);
+            } 
+            return output
+        };
+
+        var debrief = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: function() {
+                return "<p>Your payment is 2.50 GBP.</p>"
+                        +"<p>You Prolific completion code is: C1J8FXKT</p>"
+                        +"<p><a href='https://app.prolific.com/submissions/complete?cc=C1J8FXKT'>Click here to return to Prolific</a></p>"
+            },
+            choices: ''
+        }
+        timeline.push(debrief);
+
+        // start the experiment, rollout the timeline
+        jsPsych.run(timeline);
+
+
+        
+
+    </script>
+</html>

@@ -1,0 +1,9 @@
+{"internal_name": "dallinger-vgmcp", 
+"prolific_id_option": "not_required", 
+"completion_code": "HAIPSY01", 
+"completion_option": "url", 
+"device_compatibility": ["desktop"], 
+"eligibility_requirements": 
+[{"attributes": [{"name": "white_list", "value": [ ]}], 
+"_cls": "web.eligibility.models.CustomWhitelistEligibilityRequirement"}], 
+"total_available_places": 1}

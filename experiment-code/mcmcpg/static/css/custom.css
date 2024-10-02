@@ -1,0 +1,41 @@
+body {
+  text-align: center; /* Center align text for the whole body */
+  padding-top: 200px; /* Add padding to the top of the page */
+        }
+
+.image-container {
+  margin: 20px 40px; /* Add some margin around each image container */
+  display: inline-block; /* Place containers side by side */
+}
+
+.decision-button {
+  margin-top: 10px;
+  display: block; 
+  width: 60px;       /* Width of the button */
+  height: auto; 
+}
+
+.btn {
+  cursor: pointer;
+}
+
+#image_probe {
+  text-align: center; /*让div内部文字居中*/
+  width: 80px;
+  height: 120px;
+  margin: auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.radio-group {
+  display: inline-block; /* Aligns the groups horizontally */
+  margin-right: 15px; /* Adds some space between the groups */
+}
+
+#ratingSlider {
+  width: 30%;
+  margin: 10px 0;
+}
