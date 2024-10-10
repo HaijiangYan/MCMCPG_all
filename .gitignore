@@ -1,9 +1,9 @@
-main.ipynb
+# main.ipynb
 .idea/
 .ipynb_checkpoints/
 **/images/
 *.pptx
 **/*.Identifier
-**/*.npy
-**/*.pkl
-**/*.pt
+# **/*.npy
+# **/*.pkl
+# **/*.pt
